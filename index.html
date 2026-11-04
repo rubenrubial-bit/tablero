@@ -1,0 +1,1084 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tablero de Sara y Diego</title>
+<meta name="theme-color" content="#0e7a8a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} body{margin:0} [hidden]{display:none!important} img{max-width:100%}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@500;700;800;900&display=swap">
+<style>
+/* Layout: una columna tipo app; selector de niño arriba, día con 3 bloques de tareas, semana y cofre abajo */
+:root{
+  --bg:#eef3f9; --surface:#ffffff; --ink:#1b2333; --muted:#5b6679; --line:#d9e1ec;
+  --ok:#17946a; --ok-soft:#dcf3e9; --gold:#e3a20a; --gold-ink:#7b5700; --gold-soft:#fff2cf; --bad:#cf4236;
+  --shadow:0 2px 0 rgba(27,35,51,.08), 0 8px 24px rgba(27,35,51,.06);
+  --f-display:"Lilita One", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --f-body:"Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --t1:#0e7a8a; --t2:#e3a20a;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#111723; --surface:#1a2231; --ink:#eef2f8; --muted:#9ba7bb; --line:#2b3547;
+  --ok:#3cc78f; --ok-soft:#173a2e; --gold:#f5c03a; --gold-ink:#f5c03a; --gold-soft:#3a2f12; --bad:#ff7a6b;
+  --shadow:0 2px 0 rgba(0,0,0,.35); color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#111723; --surface:#1a2231; --ink:#eef2f8; --muted:#9ba7bb; --line:#2b3547;
+  --ok:#3cc78f; --ok-soft:#173a2e; --gold:#f5c03a; --gold-ink:#f5c03a; --gold-soft:#3a2f12; --bad:#ff7a6b;
+  --shadow:0 2px 0 rgba(0,0,0,.35); color-scheme:dark; }
+
+
+*{box-sizing:border-box}
+body{background:var(--bg); color:var(--ink); font-family:var(--f-body); font-size:16px; line-height:1.4}
+button{font:inherit; color:inherit; cursor:pointer}
+button:focus-visible, input:focus-visible{outline:3px solid var(--t1); outline-offset:2px}
+.app{max-width:760px; margin:0 auto; padding-block:16px 48px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px));
+  display:flex; flex-direction:column; gap:18px}
+
+/* niños */
+.kids{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.kid{border:3px solid var(--line); background:var(--surface); border-radius:20px; padding:10px 14px;
+  display:flex; align-items:center; gap:10px; text-align:left; box-shadow:var(--shadow)}
+.kid[aria-pressed="true"]{border-color:var(--t1); background:color-mix(in oklab, var(--t1) 12%, var(--surface))}
+.kid .av{font-size:30px; line-height:1}
+.kid .nm{font-family:var(--f-display); font-size:22px; letter-spacing:.3px}
+.kid .co{font-weight:800; color:var(--gold-ink); font-variant-numeric:tabular-nums; font-size:14px}
+
+/* cabecera */
+.hero{background:var(--t1); color:#fff; border-radius:24px; padding:18px 20px; display:flex; flex-direction:column; gap:12px; position:relative; overflow:hidden}
+.hero::after{content:""; position:absolute; right:-40px; top:-40px; width:160px; height:160px; border-radius:50%; background:rgba(255,255,255,.1)}
+.hero h1{font-family:var(--f-display); font-weight:400; font-size:clamp(26px,6vw,34px); margin:0; line-height:1.05; text-wrap:balance}
+.hero-row{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; position:relative; z-index:1}
+.bank{background:rgba(0,0,0,.18); border-radius:999px; padding:6px 14px; font-weight:900; font-size:18px; font-variant-numeric:tabular-nums}
+.chip{background:rgba(255,255,255,.18); border:0; border-radius:999px; padding:6px 12px; font-weight:800; font-size:14px; color:#fff}
+.datebar{display:flex; align-items:center; gap:8px; position:relative; z-index:1}
+.datebar .nav{width:40px; height:40px; border-radius:50%; border:0; background:rgba(255,255,255,.2); color:#fff; font-size:20px; font-weight:900}
+.datebar .lbl{flex:1; text-align:center; font-weight:900; font-size:18px}
+.datebar .lbl::first-letter{text-transform:uppercase}
+.datebar .hoy{border:0; border-radius:999px; padding:6px 12px; background:#fff; color:var(--t1); font-weight:900; font-size:13px}
+.datebar .hoy[hidden]{display:none}
+
+/* aviso premio */
+.reward{border-radius:18px; padding:14px 16px; background:var(--gold-soft); border:2px dashed var(--gold); display:flex; gap:12px; align-items:center}
+.reward .big{font-size:30px}
+.reward b{display:block; font-size:17px}
+.reward span{color:var(--muted); font-size:14px}
+.reward.meh{background:var(--surface); border-color:var(--line)}
+
+.lock{font-size:14px; font-weight:800; color:var(--muted); text-align:center}
+
+/* bloques */
+.block{background:var(--surface); border-radius:22px; padding:16px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px; border:2px solid transparent; transition:border-color .2s}
+.block.done{border-color:var(--ok)}
+.bhead{display:flex; align-items:center; gap:12px}
+.bhead .ic{width:46px; height:46px; border-radius:14px; display:grid; place-items:center; font-size:26px; background:color-mix(in oklab, var(--t2) 22%, var(--surface))}
+.bhead h2{font-family:var(--f-display); font-weight:400; font-size:24px; margin:0; line-height:1}
+.bhead .hr{font-size:13px; color:var(--muted); font-weight:800}
+.bhead .star{margin-left:auto; font-size:30px; filter:grayscale(1) opacity(.35); transition:transform .3s, filter .3s}
+.block.done .star{filter:none; transform:scale(1.15) rotate(-8deg)}
+.bar{height:10px; border-radius:99px; background:var(--line); overflow:hidden}
+.bar i{display:block; height:100%; background:var(--ok); border-radius:99px; transition:width .3s}
+.grp{font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-top:4px}
+.tasks{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:10px}
+.task{border:2px solid var(--line); background:var(--bg); border-radius:16px; padding:12px; min-height:84px;
+  display:flex; flex-direction:column; align-items:flex-start; gap:6px; text-align:left; position:relative; transition:transform .1s, background .2s, border-color .2s}
+.task:active{transform:scale(.97)}
+.task .e{font-size:26px; line-height:1}
+.task .t{font-weight:800; font-size:15px; line-height:1.2}
+.task .ck{position:absolute; top:10px; right:10px; width:26px; height:26px; border-radius:50%; border:2px solid var(--line); background:var(--surface); display:grid; place-items:center; font-weight:900; color:#fff; font-size:15px}
+.task[aria-pressed="true"]{background:var(--ok-soft); border-color:var(--ok)}
+.task[aria-pressed="true"] .ck{background:var(--ok); border-color:var(--ok)}
+.task[data-lock]{opacity:.75}
+.task[data-lock] .ck::before{content:"🔒"; font-size:12px}
+.task[data-lock][aria-pressed="true"] .ck::before{content:""}
+.task[data-lock]:active{transform:none}
+
+/* extras */
+.extras{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.extra{background:var(--surface); border-radius:20px; padding:14px; box-shadow:var(--shadow); border:2px solid transparent; display:flex; flex-direction:column; gap:6px; text-align:left}
+.extra.on{border-color:var(--gold); background:color-mix(in oklab, var(--gold) 12%, var(--surface))}
+.extra .e{font-size:28px}
+.extra b{font-size:16px}
+.extra small{color:var(--muted); font-size:13px; line-height:1.35}
+.extra .pts{font-weight:900; color:var(--gold-ink); font-size:14px}
+.extra .who{font-size:12px; font-weight:800; color:var(--muted)}
+.extra .top{display:flex; align-items:flex-start; justify-content:space-between; gap:8px; min-height:40px}
+.stamp{--ink-st:#c0392b; flex:none; width:96px; height:96px; margin:-8px -6px -26px 0; border-radius:50%; border:4px double var(--ink-st); color:var(--ink-st);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; transform:rotate(-14deg);
+  font-family:var(--f-display); font-size:10px; line-height:1.05; text-transform:uppercase; letter-spacing:0; padding:10px; overflow-wrap:anywhere;
+  background:color-mix(in oklab, var(--ink-st) 8%, transparent); animation:stampIn .35s cubic-bezier(.2,1.6,.4,1)}
+.stamp .ck{font-size:26px; line-height:1}
+@keyframes stampIn{from{transform:rotate(-30deg) scale(1.8); opacity:0}}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .stamp{--ink-st:#ff7a6b} }
+:root[data-theme="dark"] .stamp{--ink-st:#ff7a6b}
+
+/* semana */
+.card{background:var(--surface); border-radius:22px; padding:16px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px}
+.card h2{font-family:var(--f-display); font-weight:400; font-size:22px; margin:0}
+.week{display:grid; grid-template-columns:repeat(7,1fr); gap:6px}
+.wd{border:2px solid var(--line); background:var(--bg); border-radius:14px; padding:8px 2px; display:flex; flex-direction:column; align-items:center; gap:2px; min-width:0}
+.wd.sel{border-color:var(--t1)}
+.wd .d{font-weight:900; font-size:13px; text-transform:uppercase; color:var(--muted)}
+.wd .n{font-weight:900; font-size:16px}
+.wd .s{font-size:11px; letter-spacing:-1px; min-height:15px}
+.wd .c{font-size:12px; font-weight:900; color:var(--gold-ink); font-variant-numeric:tabular-nums}
+.wd.wk{background:color-mix(in oklab, var(--t2) 12%, var(--bg))}
+.weektot{display:flex; justify-content:space-between; font-weight:800; color:var(--muted); font-size:14px}
+
+/* cofre */
+.shop-head{display:flex; align-items:baseline; justify-content:space-between; gap:8px; flex-wrap:wrap}
+.rule{font-size:14px; color:var(--muted)}
+.items{display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:10px}
+.item{border:2px solid var(--line); background:var(--bg); border-radius:16px; padding:12px; display:flex; flex-direction:column; gap:6px; text-align:left}
+.item .e{font-size:28px}
+.item .t{font-weight:800; font-size:15px; line-height:1.2}
+.item .p{margin-top:auto; font-weight:900; color:var(--gold-ink); font-variant-numeric:tabular-nums}
+.item.poor{opacity:.55}
+.item.poor .p::after{content:" · te faltan " attr(data-falta)}
+.item.max{opacity:.5}
+.tag{font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:var(--t1)}
+.sect{font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:.08em; color:var(--muted)}
+.hist{display:flex; flex-direction:column; gap:6px; font-size:14px}
+.hist div{display:flex; justify-content:space-between; gap:8px; border-bottom:1px solid var(--line); padding-bottom:6px}
+.hist button{border:0; background:none; color:var(--muted); font-weight:800; text-decoration:underline}
+
+/* pie */
+.foot{display:flex; gap:10px; justify-content:center; flex-wrap:wrap}
+.btn{border:2px solid var(--line); background:var(--surface); border-radius:999px; padding:10px 18px; font-weight:900}
+.btn.pri{background:var(--t1); border-color:var(--t1); color:#fff}
+.btn.on{background:var(--gold); border-color:var(--gold); color:#2a1d00}
+.note{font-size:13px; color:var(--muted); text-align:center}
+
+/* hoja modal */
+.scrim{position:fixed; inset:0; background:rgba(10,14,22,.55); display:flex; align-items:flex-end; justify-content:center; z-index:50; padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet{background:var(--surface); width:100%; max-width:520px; border-radius:24px 24px 0 0; padding:20px max(20px, env(safe-area-inset-left,0px)) 24px; display:flex; flex-direction:column; gap:14px; max-height:88vh; overflow:auto}
+@media (min-width:600px){ .scrim{align-items:center} .sheet{border-radius:24px} }
+.sheet h3{font-family:var(--f-display); font-weight:400; font-size:24px; margin:0}
+.sheet p{margin:0; color:var(--muted)}
+.row{display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap}
+.pin{font-size:28px; letter-spacing:.5em; text-align:center; padding:10px; border-radius:14px; border:2px solid var(--line); background:var(--bg); color:var(--ink); width:100%}
+.err{color:#c0392b; font-weight:800; font-size:14px}
+.themes{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.th{border:3px solid var(--line); border-radius:18px; padding:14px; background:var(--bg); display:flex; flex-direction:column; gap:4px; text-align:left}
+.th[aria-pressed="true"]{border-color:var(--ink)}
+.th .e{font-size:30px}
+.th b{font-size:16px}
+.th small{color:var(--muted)}
+.th .sw{display:flex; gap:4px}
+.th .sw i{width:18px; height:18px; border-radius:50%}
+.prices{display:flex; flex-direction:column; gap:8px}
+.prices label{display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:14px; font-weight:700}
+.prices input{width:90px; padding:8px; border-radius:10px; border:2px solid var(--line); background:var(--bg); color:var(--ink); font:inherit; font-weight:800; text-align:right}
+
+.sheet.wide{max-width:720px}
+.tabs{display:flex; gap:6px; flex-wrap:wrap}
+.tabs button{border:2px solid var(--line); background:var(--bg); border-radius:999px; padding:8px 14px; font-weight:900; font-size:14px}
+.tabs button[aria-pressed="true"]{background:var(--t1); border-color:var(--t1); color:#fff}
+.ed{display:flex; flex-direction:column; gap:10px}
+.edblk{border:2px solid var(--line); border-radius:16px; padding:12px; display:flex; flex-direction:column; gap:8px}
+.edrow{display:grid; grid-template-columns:52px minmax(0,1fr) auto; gap:6px; align-items:center}
+.edrow.pr{grid-template-columns:52px minmax(0,1fr) 80px auto}
+.edrow.pr2{grid-template-columns:1fr 1fr}
+.edrow.hd{grid-template-columns:52px minmax(0,1fr) minmax(0,1fr)}
+.ed input, .ed select{width:100%; min-width:0; padding:9px 8px; border-radius:10px; border:2px solid var(--line); background:var(--bg); color:var(--ink); font:inherit; font-weight:700; font-size:15px}
+.ed input.emo{text-align:center; font-size:20px; padding:6px 2px}
+.ed .grpin{font-size:13px; font-weight:700}
+.del{border:0; background:none; font-size:20px; width:36px; height:36px; border-radius:10px}
+.acts{display:flex; align-items:center; gap:2px}
+.mv{border:2px solid var(--line); background:var(--surface); border-radius:10px; width:32px; height:36px; font-size:12px; font-weight:900; color:var(--muted)}
+.mv:disabled{opacity:.3; cursor:default}
+.ed button.emo{width:100%; height:44px; border-radius:10px; border:2px solid var(--line); background:var(--bg); font-size:22px; display:grid; place-items:center; position:relative}
+.ed button.emo::after{content:"▾"; position:absolute; right:2px; bottom:0; font-size:10px; color:var(--muted)}
+.emogrid{display:grid; grid-template-columns:repeat(auto-fill, minmax(48px,1fr)); gap:6px}
+.emogrid button{height:48px; border-radius:12px; border:2px solid var(--line); background:var(--bg); font-size:26px}
+.emogrid button[aria-pressed="true"]{border-color:var(--t1); background:color-mix(in oklab, var(--t1) 14%, var(--bg))}
+.del:hover{background:var(--bg)}
+.add{border:2px dashed var(--line); background:none; border-radius:12px; padding:10px; font-weight:900; color:var(--muted)}
+.edsub{display:grid; grid-template-columns:52px minmax(0,1fr) auto; gap:6px; margin-top:-4px}
+.edsub input{grid-column:2}
+@media (max-width:520px){ .edrow.pr{grid-template-columns:44px minmax(0,1fr) 64px auto} .edrow.pr2{grid-template-columns:1fr} }
+.tiles{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px}
+.tile{background:var(--bg); border-radius:16px; padding:12px 10px; display:flex; flex-direction:column; gap:2px; min-width:0}
+.tile .v{font-family:var(--f-display); font-size:28px; line-height:1; font-variant-numeric:tabular-nums}
+.tile .l{font-size:12px; font-weight:800; color:var(--muted); line-height:1.2}
+.tile.g .v{color:var(--gold-ink)} .tile.o .v{color:var(--ok)} .tile.b .v{color:var(--bad)}
+@media (max-width:520px){ .tiles{grid-template-columns:repeat(2, minmax(0,1fr))} }
+.stamps{display:flex; flex-wrap:wrap; gap:14px; padding:6px 0 10px}
+.stampbox{display:flex; flex-direction:column; align-items:center; gap:10px; width:110px}
+.stampbox .stamp{margin:0; animation:none}
+.stampbox .stamp.off{--ink-st:var(--line); color:var(--muted)}
+.stampbox b{font-size:14px}
+.list{display:flex; flex-direction:column; gap:6px}
+.li{display:flex; justify-content:space-between; gap:10px; align-items:center; font-size:15px; border-bottom:1px solid var(--line); padding-bottom:6px}
+.li span:last-child{font-weight:900; font-variant-numeric:tabular-nums; white-space:nowrap}
+.bars{display:flex; flex-direction:column; gap:8px}
+.br{display:grid; grid-template-columns:minmax(0,1fr) 120px 44px; gap:8px; align-items:center; font-size:14px; font-weight:700}
+.br .tr{height:12px; border-radius:99px; background:var(--line); overflow:hidden}
+.br .tr i{display:block; height:100%; border-radius:99px}
+.br .pc{text-align:right; font-weight:900; font-variant-numeric:tabular-nums}
+.br.hi{color:var(--bad)}
+@media (max-width:520px){ .br{grid-template-columns:minmax(0,1fr) 70px 40px} }
+.callout{background:color-mix(in oklab, var(--bad) 10%, var(--surface)); border:2px solid color-mix(in oklab, var(--bad) 40%, var(--surface)); border-radius:16px; padding:12px 14px; font-size:14px}
+.callout.okc{background:var(--ok-soft); border-color:var(--ok)}
+.toast{position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:12px 18px; border-radius:999px; font-weight:900; z-index:60; max-width:calc(100% - 32px); text-align:center}
+.boom{position:fixed; pointer-events:none; font-size:26px; z-index:70; animation:fly 1s ease-out forwards}
+@keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(var(--r)); opacity:0}}
+@media (prefers-reduced-motion: reduce){ .boom{display:none} .stamp{animation:none} *{transition:none!important} }
+@media (max-width:420px){ .tasks{grid-template-columns:1fr 1fr} .items{grid-template-columns:1fr 1fr} .kid .av{font-size:24px} .kid .nm{font-size:19px} .wd .n{font-size:14px} }
+</style>
+
+</head>
+<body>
+<div class="app" id="app" data-tema="piratas">
+  <div class="kids" id="kids"></div>
+  <section class="hero" id="hero"></section>
+  <div id="reward"></div>
+  <div class="lock" id="lock" hidden></div>
+  <div id="blocks" style="display:flex;flex-direction:column;gap:14px"></div>
+  <div class="extras" id="extras"></div>
+  <section class="card" id="week"></section>
+  <section class="card" id="shop"></section>
+  <div class="foot">
+    <button class="btn" id="btnPadres">🔒 Modo padres</button>
+    <button class="btn" id="btnStats" hidden>📈 Estadísticas</button>
+    <button class="btn" id="btnAjustes" hidden>⚙️ Ajustes</button>
+  </div>
+  <p class="note" id="status">Cargando el tablero…</p>
+</div>
+<div id="modal"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- Datos fijos ---------- */
+const NINOS = {
+  sara:{nombre:"Sara", temaDef:"piratas"},
+  diego:{nombre:"Diego", temaDef:"piratas"}
+};
+const nombre = n => ((S.config.ninos||{})[n] && (S.config.ninos||{})[n].trim()) || NINOS[n].nombre;
+const TEMAS = {
+  piratas:{nombre:"Piratas", av:"🏴‍☠️", moneda:"doblones", mi:"🪙", cofre:"Cofre del tesoro", saludo:n=>`¡Al abordaje, ${n}!`, desc:"Barcos, islas y tesoros", c:["#0e7a8a","#e3a20a"]},
+  espacio:{nombre:"Espacio", av:"🚀", moneda:"cristales", mi:"💠", cofre:"Tienda galáctica", saludo:n=>`¡Despegamos, ${n}!`, desc:"Cohetes, planetas y astronautas", c:["#5a4ed8","#20a4d6"]},
+  magia:{nombre:"Escuela de magia", av:"🔮", moneda:"gemas", mi:"💎", cofre:"Bazar del mago", saludo:n=>`¡Abracadabra, ${n}!`, desc:"Hechizos, pociones y dragones", c:["#b03597","#7f5ae0"]},
+  selva:{nombre:"Exploradores", av:"🧭", moneda:"bellotas de oro", mi:"🌰", cofre:"Puesto del explorador", saludo:n=>`¡A explorar, ${n}!`, desc:"Selvas, mapas y animales", c:["#2e8b3b","#d98a12"]},
+  dinosaurios:{nombre:"Dinosaurios", av:"🦖", moneda:"huevos de dino", mi:"🥚", cofre:"Cueva de los fósiles", saludo:n=>`¡Grrr, a por el día, ${n}!`, desc:"Volcanes, fósiles y dinos", c:["#5f8a1c","#e0761d"]},
+  oceano:{nombre:"Océano", av:"🐬", moneda:"conchas", mi:"🐚", cofre:"Arrecife del tesoro", saludo:n=>`¡A bucear, ${n}!`, desc:"Delfines, sirenas y arrecifes", c:["#1d6bd0","#12a89d"]},
+  heroes:{nombre:"Superhéroes", av:"🦸", moneda:"insignias", mi:"🛡️", cofre:"Cuartel general", saludo:n=>`¡Misión del día, ${n}!`, desc:"Superpoderes y misiones", c:["#c9302a","#2b5fd6"]},
+  futbol:{nombre:"Fútbol", av:"⚽", moneda:"trofeos", mi:"🏆", cofre:"Vitrina de premios", saludo:n=>`¡A ganar el partido, ${n}!`, desc:"Goles, equipo y campeonatos", c:["#157a4a","#e6a90b"]},
+  unicornios:{nombre:"Unicornios", av:"🦄", moneda:"estrellitas", mi:"✨", cofre:"Castillo arcoíris", saludo:n=>`¡Día mágico, ${n}!`, desc:"Arcoíris, nubes y castillos", c:["#c03c8c","#5b8ff0"]},
+  ninjas:{nombre:"Ninjas", av:"🥷", moneda:"pergaminos", mi:"📜", cofre:"Dojo secreto", saludo:n=>`¡A entrenar, ${n}!`, desc:"Sigilo, dojos y cinturones", c:["#3d3a8c","#d4453f"]},
+  robots:{nombre:"Robots e inventos", av:"🤖", moneda:"tornillos", mi:"🔩", cofre:"Taller de inventos", saludo:n=>`¡Sistemas listos, ${n}!`, desc:"Inventos, chispas y engranajes", c:["#3f6a86","#ef7f19"]},
+  musica:{nombre:"Estrellas de la música", av:"🎤", moneda:"notas", mi:"🎵", cofre:"Camerino de estrellas", saludo:n=>`¡Que empiece el show, ${n}!`, desc:"Escenarios, focos y canciones", c:["#7a3dc2","#e9467f"]}
+};
+const BLOQUES_DEF = [
+  {id:"manana", nombre:"Mañana", ic:"🌅", hora:"Listos a las 8:30", tareas:[
+    {id:"ventanas", e:"🪟", t:"Abrir las ventanas"},
+    {id:"desayuno", e:"🥣", t:"Hacer el desayuno y recoger", modo:"compartido"},
+    {id:"cama", e:"🛏️", t:"Hacer la cama"},
+    {id:"almuerzo", e:"🎒", t:"Almuerzo y mochila listos"},
+    {id:"dientesM", e:"🪥", t:"Lavarme los dientes"},
+    {id:"listo", e:"⏰", t:"Vestido y listo a las 8:30"}
+  ]},
+  {id:"tarde", nombre:"Tarde", ic:"🍎", hora:"Desde las 17:15", tareas:[
+    {id:"merienda", e:"🥪", t:"Hacer la merienda y recoger"},
+    {id:"estudio", e:"📚", t:"1 hora de estudio y deberes"}
+  ]},
+  {id:"noche", nombre:"Noche", ic:"🌙", hora:"Cena 20:15 · en la cama 21:30", tareas:[
+    {id:"ducha", e:"🚿", t:"Ducharme", g:"Antes de cenar"},
+    {id:"habitacion", e:"🧸", t:"Habitación recogida", g:"Antes de cenar"},
+    {id:"recogerCena", e:"🍽️", t:"Recoger después de cenar", g:"Después de cenar"},
+    {id:"dientesN", e:"🪥", t:"Dientes y pijama", g:"Antes de dormir"},
+    {id:"ropa", e:"👕", t:"Preparar la ropa de mañana", g:"Antes de dormir"},
+    {id:"leer", e:"📖", t:"Leer un poco y a la cama a las 21:30", g:"Antes de dormir"}
+  ]}
+];
+const PUNTOS = {bloque:10};
+const EXTRAS_DEF = [
+  {id:"tripulacion", e:"🏅", t:"Buena tripulación", desc:"Sin peleas, hablar con respeto, habitación recogida, manos lavadas antes de comer y ropa limpia y sin rotos.", sello:"Buena tripulación", pts:5, ptsFinde:10},
+  {id:"cena", e:"👩‍🍳", t:"Bonus: hice la cena", desc:"Preparar la cena y dejar la cocina recogida. Vale solo o con tu hermano o hermana.", sello:"¡Gran chef!", pts:10, ptsFinde:10}
+];
+const extrasCfg = () => Array.isArray(S.config.extras) ? S.config.extras : EXTRAS_DEF;
+const ptsExtra = (x, f) => esFinde(f) ? (Number.isFinite(x.ptsFinde) && x.ptsFinde>0 ? x.ptsFinde : x.pts) : x.pts;
+/* Puntos de extras ganados en un día; se guardan al darlos para que cambiar el valor no afecte al pasado */
+function extrasDia(d){
+  if(d.extras) return d.extras;
+  const o = {};
+  if(d.tripulacion) o.tripulacion = esFinde(d.fecha) ? 10 : 5;
+  if(d.cena) o.cena = 10;
+  return o;
+}
+const TIENDA_DEF = [
+  {id:"peli", e:"🎬", t:"Una película", coste:40, grupo:"finde", modo:"elegir"},
+  {id:"tablet", e:"📱", t:"1 hora de tablet", coste:40, grupo:"finde", modo:"elegir"},
+  {id:"consola", e:"🎮", t:"1 hora de consola", coste:40, grupo:"finde", modo:"elegir"},
+  {id:"chuches", e:"🍬", t:"1 € de chuches", coste:25, grupo:"chuches"},
+  {id:"desayuno", e:"🥞", t:"Desayuno especial (tortitas, gofres…)", coste:60},
+  {id:"cenaEsp", e:"🍕", t:"Cena especial (pizza, hamburguesa…)", coste:90, modo:"compartido"},
+  {id:"recre", e:"🕹️", t:"Ir a las recreativas", coste:150},
+  {id:"bolera", e:"🎳", t:"Ir a la bolera", coste:200},
+  {id:"cine", e:"🍿", t:"Ir al cine", coste:250},
+  {id:"restaurante", e:"🍝", t:"Restaurante que tú elijas", coste:300}
+];
+const DIAS_SEM = ["dom","lun","mar","mié","jue","vie","sáb"];
+
+/* ---------- Fechas ---------- */
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y,m-1,d); };
+const addDays = (s,n) => { const d = parse(s); d.setDate(d.getDate()+n); return ymd(d); };
+const esFinde = s => { const w = parse(s).getDay(); return w===0 || w===6; };
+const lunes = s => addDays(s, -((parse(s).getDay()+6)%7));
+const hoy = () => ymd(new Date());
+
+/* ---------- Estado ---------- */
+const S = {
+  dias:{}, canjes:{}, regalos:{}, config:{},
+  nino: lsGet("nino") || "sara",
+  fecha: hoy(),
+  padres:false,
+  db:null, listo:false
+};
+function lsGet(k){ try{ return localStorage.getItem("tablero:"+k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem("tablero:"+k, v); }catch(e){} }
+
+const pin = () => S.config.pin || "1234";
+const tienda = () => Array.isArray(S.config.tienda) ? S.config.tienda
+  : TIENDA_DEF.map(it => ({...it, coste: (S.config.precios && Number.isFinite(S.config.precios[it.id])) ? S.config.precios[it.id] : it.coste}));
+const modoDe = it => it.modo || ((TIENDA_DEF.find(d => d.id===it.id)||{}).modo) || "individual";
+const otro = n => n==="sara" ? "diego" : "sara";
+const mitad = c => Math.ceil(c/2);
+const monedaDe = n => TEMAS[temaDe(n)].moneda;
+const bloques = () => Array.isArray(S.config.bloques) && S.config.bloques.length===3 ? S.config.bloques : BLOQUES_DEF;
+const okBloques = d => bloques().filter(b => b.tareas.length && b.tareas.every(t => d.tareas && d.tareas[t.id])).map(b => b.id);
+const temaDe = n => TEMAS[(S.config.temas||{})[n]] ? (S.config.temas||{})[n] : NINOS[n].temaDef;
+const T = () => TEMAS[temaDe(S.nino)];
+const diaId = (n,f) => n+"_"+f;
+const dia = (n,f) => S.dias[diaId(n,f)] || {nino:n, fecha:f, tareas:{}, extras:{}};
+
+function estrellas(d){
+  /* Los días pasados conservan las estrellas que se ganaron, aunque luego se cambien las tareas */
+  if(d.fecha !== hoy() && Array.isArray(d.ok)) return d.ok.length;
+  return okBloques(d).length;
+}
+function monedasDia(d){
+  const ex = Object.values(extrasDia(d)).reduce((a,v) => a + (Number(v)||0), 0);
+  if(esFinde(d.fecha)) return ex;
+  return estrellas(d)*PUNTOS.bloque + ex;
+}
+function saldo(n){
+  let s = 0;
+  for(const k in S.dias){ const d = S.dias[k]; if(d.nino===n) s += monedasDia(d); }
+  for(const k in S.canjes){ const c = S.canjes[k]; if(c.nino===n) s -= (c.coste||0); }
+  for(const k in S.regalos){ const r = S.regalos[k]; if(r.para===n) s += (r.cantidad||0); if(r.de===n) s -= (r.cantidad||0); }
+  return s;
+}
+
+/* ---------- Almacén (db compartida o, si no hay, este dispositivo) ---------- */
+const colas = {};
+const guardarLocal = () => lsSet("local", JSON.stringify({dias:S.dias, canjes:S.canjes, regalos:S.regalos, config:S.config}));
+function guardar(coleccion, id, cuerpo){
+  if(coleccion==="config") S.config = cuerpo; else S[coleccion][id] = cuerpo;
+  render();
+  if(!S.db){ guardarLocal(); return; }
+  const key = coleccion+"/"+id;
+  colas[key] = (colas[key]||Promise.resolve()).then(() => S.db.doc(key).set(cuerpo)).catch(e => toast(errMsg(e)));
+}
+function borrar(coleccion, id){
+  if(S[coleccion]) delete S[coleccion][id];
+  render();
+  if(!S.db){ guardarLocal(); return; }
+  const key = coleccion+"/"+id;
+  colas[key] = (colas[key]||Promise.resolve()).then(() => S.db.doc(key).delete()).catch(e => toast(errMsg(e)));
+}
+function errMsg(e){
+  if(e && e.code==="quota_exceeded") return "El tablero está lleno. Avisa a papá o mamá.";
+  return "No se ha podido guardar. Revisa la conexión e inténtalo otra vez.";
+}
+function setDia(cambios){
+  const d = dia(S.nino, S.fecha);
+  const nuevo = {nino:S.nino, fecha:S.fecha, tareas:{...(d.tareas||{})}, extras:{...extrasDia(d)}, ...cambios};
+  delete nuevo.tripulacion; delete nuevo.cena;
+  if(cambios.tareas) nuevo.tareas = cambios.tareas;
+  nuevo.ok = okBloques(nuevo);
+  guardar("dias", diaId(S.nino,S.fecha), nuevo);
+}
+
+/* ---------- Render ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+const bloqueado = () => !S.padres && S.fecha !== hoy();
+
+function render(){
+  const t = T();
+  $("app").dataset.tema = temaDe(S.nino);
+  $("app").style.setProperty("--t1", t.c[0]); $("app").style.setProperty("--t2", t.c[1]);
+
+  $("kids").innerHTML = Object.keys(NINOS).map(n => {
+    const tt = TEMAS[temaDe(n)];
+    return `<button class="kid" data-a="nino" data-v="${n}" aria-pressed="${n===S.nino}">
+      <span class="av">${tt.av}</span><span><div class="nm">${esc(nombre(n))}</div>
+      <div class="co">${tt.mi} ${saldo(n)} ${tt.moneda}</div></span></button>`;
+  }).join("");
+
+  const f = parse(S.fecha);
+  const etiqueta = f.toLocaleDateString("es-ES",{weekday:"long", day:"numeric", month:"long"});
+  $("hero").innerHTML = `
+    <div class="hero-row"><h1>${esc(t.saludo(nombre(S.nino)))}</h1>
+      <span style="display:flex;gap:6px;flex-wrap:wrap"><button class="chip" data-a="resumen">📊 Mi resumen</button><button class="chip" data-a="tema">🎨 Cambiar tema</button></span></div>
+    <div class="hero-row"><span class="bank">${t.mi} ${saldo(S.nino)} ${t.moneda}</span>
+      <span style="font-weight:800;opacity:.9">${S.fecha===hoy()?"Hoy":""}</span></div>
+    <div class="datebar">
+      <button class="nav" data-a="dia" data-v="-1" aria-label="Día anterior">‹</button>
+      <div class="lbl">${etiqueta}</div>
+      <button class="hoy" data-a="hoy" ${S.fecha===hoy()?"hidden":""}>Ir a hoy</button>
+      <button class="nav" data-a="dia" data-v="1" aria-label="Día siguiente">›</button>
+    </div>`;
+
+  renderPremio();
+  const lk = $("lock");
+  lk.hidden = !bloqueado();
+  lk.textContent = S.fecha > hoy() ? "Este día aún no ha llegado. Solo se pueden marcar las tareas de hoy." : "🔒 Este día ya pasó. Solo papá o mamá pueden cambiarlo con su PIN.";
+
+  const d = dia(S.nino, S.fecha);
+  const finde = esFinde(S.fecha);
+  if(finde){
+    $("blocks").innerHTML = `<div class="block"><div class="bhead"><div class="ic">🏖️</div><div>
+      <h2>Fin de semana</h2><div class="hr">Hoy no hay rutina diaria. Cuenta el sello de buena tripulación y puedes canjear tu tesoro.</div></div></div></div>`;
+  } else {
+    $("blocks").innerHTML = bloques().map(b => {
+      const hechas = b.tareas.filter(x => d.tareas && d.tareas[x.id]).length;
+      const done = b.tareas.length>0 && hechas === b.tareas.length;
+      let g = null, html = "";
+      const grupos = [];
+      b.tareas.forEach(x => { if(x.g !== g){ g = x.g; grupos.push({g, items:[]}); } grupos[grupos.length-1].items.push(x); });
+      html = grupos.map(gr => (gr.g?`<div class="grp">${esc(gr.g)}</div>`:"") + `<div class="tasks">` + gr.items.map(x => {
+        const on = !!(d.tareas && d.tareas[x.id]);
+        return `<button class="task" data-a="tarea" data-b="${b.id}" data-v="${x.id}" aria-pressed="${on}" ${bloqueado()?'data-lock="1"':""}>
+          <span class="ck">${on?"✓":""}</span><span class="e">${esc(x.e)}</span><span class="t">${esc(x.t)}</span></button>`;
+      }).join("") + `</div>`).join("");
+      return `<section class="block ${done?"done":""}">
+        <div class="bhead"><div class="ic">${b.ic}</div><div><h2>${esc(b.nombre)}</h2><div class="hr">${esc(b.hora)}</div></div>
+        <span class="star" aria-label="${done?"Estrella conseguida":"Estrella sin conseguir"}">⭐</span></div>
+        <div class="bar"><i style="width:${b.tareas.length?Math.round(hechas/b.tareas.length*100):0}%"></i></div>
+        ${html}
+        <div class="hr" style="font-size:13px;color:var(--muted);font-weight:800">${done?`¡Bloque completo! +${PUNTOS.bloque} ${t.moneda}`:`${hechas} de ${b.tareas.length} · completa el bloque para ganar ⭐ y ${PUNTOS.bloque} ${t.moneda}`}</div>
+      </section>`;
+    }).join("");
+  }
+
+  const ganados = extrasDia(d);
+  $("extras").innerHTML = extrasCfg().map(x => {
+    const on = ganados[x.id] != null;
+    const pts = on ? ganados[x.id] : ptsExtra(x, S.fecha);
+    return `<button class="extra ${on?"on":""}" data-a="extra" data-v="${esc(x.id)}">
+      <span class="top"><span class="e">${esc(x.e)}</span>${on?`<span class="stamp" aria-hidden="true"><span class="ck">✓</span>${esc(x.sello||x.t)}</span>`:""}</span>
+      <b>${esc(x.t)}</b>${x.desc?`<small>${esc(x.desc)}</small>`:""}
+      <span class="pts">+${pts} ${t.moneda}</span><span class="who">${on?"✓ Conseguido":"Lo pone papá o mamá"}</span>
+    </button>`;
+  }).join("");
+
+  renderSemana(); renderTienda();
+  $("btnPadres").textContent = S.padres ? "🔓 Salir del modo padres" : "🔒 Modo padres";
+  $("btnPadres").classList.toggle("on", S.padres);
+  $("btnAjustes").hidden = !S.padres; $("btnStats").hidden = !S.padres;
+}
+
+function renderPremio(){
+  const el = $("reward");
+  if(esFinde(S.fecha)){
+    el.innerHTML = `<div class="reward"><span class="big">${T().mi}</span><div><b>¡Es fin de semana!</b>
+      <span>Elige 2 premios del ${T().cofre.toLowerCase()} y, si te llega, algo más.</span></div></div>`; return;
+  }
+  const ayer = addDays(S.fecha,-1);
+  if(esFinde(ayer)){
+    el.innerHTML = `<div class="reward meh"><span class="big">🎯</span><div><b>Consigue hoy las 3 ⭐</b>
+      <span>y mañana tendrás 30 min de tele o de Monkey Island.</span></div></div>`; return;
+  }
+  const e = estrellas(dia(S.nino, ayer));
+  el.innerHTML = e===3
+    ? `<div class="reward"><span class="big">📺</span><div><b>¡Premio de hoy desbloqueado!</b>
+        <span>Ayer conseguiste las 3 ⭐. Hoy puedes elegir 30 min de tele o de Monkey Island.</span></div></div>`
+    : `<div class="reward meh"><span class="big">💪</span><div><b>Ayer: ${e} de 3 ⭐</b>
+        <span>Hoy no hay premio diario, pero si consigues las 3 ⭐ mañana sí.</span></div></div>`;
+}
+
+function renderSemana(){
+  const t = T(); const l = lunes(S.fecha); let tot = 0;
+  const celdas = [];
+  for(let i=0;i<7;i++){
+    const f = addDays(l,i), d = dia(S.nino,f), m = monedasDia(d); tot += m;
+    const fin = esFinde(f);
+    const marcas = fin ? (Object.keys(extrasDia(d)).length ? "🏅".repeat(Math.min(3,Object.keys(extrasDia(d)).length)) : "") : "⭐".repeat(estrellas(d)) + "·".repeat(3-estrellas(d));
+    celdas.push(`<button class="wd ${f===S.fecha?"sel":""} ${fin?"wk":""}" data-a="ir" data-v="${f}">
+      <span class="d">${DIAS_SEM[parse(f).getDay()]}</span><span class="n">${parse(f).getDate()}</span>
+      <span class="s">${marcas}</span><span class="c">${m?"+"+m:""}</span></button>`);
+  }
+  $("week").innerHTML = `<h2>Mi semana</h2><div class="week">${celdas.join("")}</div>
+    <div class="weektot"><span>Ganado esta semana</span><span>${t.mi} ${tot} ${t.moneda}</span></div>`;
+}
+
+function canjesDe(n){ return Object.entries(S.canjes).filter(([k,c]) => c.nino===n).sort((a,b) => (b[1].ts||0)-(a[1].ts||0)); }
+function movimientos(n){
+  const l = [];
+  canjesDe(n).forEach(([k,c]) => l.push({k, ts:c.ts||0, fecha:c.fecha, n:-(c.coste||0), undo:"deshacer",
+    txt: esc(c.t) + (c.compartido ? ` (a medias con ${esc(nombre(c.con))})` : "")}));
+  Object.entries(S.regalos).forEach(([k,r]) => {
+    if(r.de===n) l.push({k, ts:r.ts||0, fecha:r.fecha, n:-(r.cantidad||0), undo:"deshacerRegalo", txt:`🎁 Regalo a ${esc(nombre(r.para))}`});
+    if(r.para===n) l.push({k, ts:r.ts||0, fecha:r.fecha, n:(r.cantidad||0), undo:"deshacerRegalo", txt:`🎁 Regalo de ${esc(nombre(r.de))}`});
+  });
+  return l.sort((a,b) => b.ts-a.ts);
+}
+function usadosSemana(n, grupo){
+  const l = lunes(S.fecha), fin = addDays(l,6);
+  return canjesDe(n).filter(([k,c]) => c.grupo===grupo && c.fecha>=l && c.fecha<=fin).length;
+}
+function renderTienda(){
+  const t = T(), s = saldo(S.nino);
+  const finde = usadosSemana(S.nino,"finde"), chu = usadosSemana(S.nino,"chuches");
+  const items = tienda();
+  const card = it => {
+    const m = modoDe(it);
+    const max = (it.grupo==="finde" && finde>=2) || (it.grupo==="chuches" && chu>=1);
+    const necesita = m==="compartido" ? mitad(it.coste) : (m==="elegir" ? Math.min(it.coste, mitad(it.coste)) : it.coste);
+    const poor = !max && s < necesita;
+    const tags = [it.grupo==="finde"?"Premio de finde":it.grupo==="chuches"?"1 por semana":"", m==="compartido"?"👫 Compartido":m==="elegir"?"Solo o compartido":""].filter(Boolean).join(" · ");
+    return `<button class="item ${poor?"poor":""} ${max?"max":""}" data-a="canjear" data-v="${esc(it.id)}" data-falta="${necesita-s}">
+      ${tags?`<span class="tag">${tags}</span>`:""}
+      <span class="e">${esc(it.e)}</span><span class="t">${esc(it.t)}</span>
+      <span class="p">${t.mi} ${it.coste}${m!=="individual"?` <small style="font-weight:800;color:var(--muted)">· a medias ${mitad(it.coste)} cada uno</small>`:""}</span></button>`;
+  };
+  const mov = movimientos(S.nino).slice(0,6);
+  const o = otro(S.nino);
+  $("shop").innerHTML = `
+    <div class="shop-head"><h2>${t.cofre}</h2><span class="bank" style="background:var(--gold-soft);color:var(--gold-ink)">${t.mi} ${s}</span></div>
+    <p class="rule">Cada fin de semana eliges 2 premios de finde (puedes repetir). Llevas ${finde} de 2. Lo que no gastes se guarda para premios más grandes.</p>
+    <div class="sect">Premios de fin de semana</div>
+    <div class="items">${items.filter(i=>i.grupo).map(card).join("")}</div>
+    <div class="sect">Grandes tesoros (ahorra para conseguirlos)</div>
+    <div class="items">${items.filter(i=>!i.grupo).map(card).join("")}</div>
+    <button class="btn" data-a="regalar" style="align-self:flex-start">🎁 Regalar ${t.moneda} a ${esc(nombre(o))}</button>
+    ${mov.length?`<div class="sect">Movimientos</div><div class="hist">${mov.map(x => `<div><span>${x.txt} · ${parse(x.fecha).toLocaleDateString("es-ES",{day:"numeric",month:"short"})}</span>
+      <span>${x.n>0?"+":"−"}${Math.abs(x.n)} ${S.padres?`<button data-a="${x.undo}" data-v="${esc(x.k)}">deshacer</button>`:""}</span></div>`).join("")}</div>`:""}`;
+}
+
+/* ---------- Efectos ---------- */
+function toast(msg){
+  const el = document.createElement("div"); el.className = "toast"; el.textContent = msg;
+  document.body.appendChild(el); setTimeout(() => el.remove(), 2600);
+}
+function fiesta(x,y){
+  const e = ["⭐", T().mi, "🎉", "✨"];
+  for(let i=0;i<14;i++){
+    const s = document.createElement("span"); s.className = "boom"; s.textContent = e[i%e.length];
+    s.style.left = x+"px"; s.style.top = y+"px";
+    s.style.setProperty("--dx", (Math.random()*240-120)+"px");
+    s.style.setProperty("--dy", (Math.random()*-220-40)+"px");
+    s.style.setProperty("--r", (Math.random()*360-180)+"deg");
+    document.body.appendChild(s); setTimeout(() => s.remove(), 1100);
+  }
+}
+
+/* ---------- Hojas (modales) ---------- */
+function abrir(html, clase){ $("modal").innerHTML = `<div class="scrim" data-a="cerrarFondo"><div class="sheet ${clase||""}" role="dialog" aria-modal="true">${html}</div></div>`; }
+function cerrar(){ $("modal").innerHTML = ""; }
+let despuesPin = null;
+function pedirPin(motivo, cb){
+  if(S.padres){ cb(); return; }
+  despuesPin = cb;
+  abrir(`<h3>Solo papá o mamá</h3><p>${esc(motivo)}</p>
+    <input id="pinIn" class="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" aria-label="PIN">
+    <span class="err" id="pinErr" hidden>PIN incorrecto</span>
+    <div class="row"><button class="btn" data-a="cerrar">Cancelar</button><button class="btn pri" data-a="okPin">Confirmar</button></div>`);
+  setTimeout(() => { const i = $("pinIn"); if(i) i.focus(); }, 50);
+}
+function comprobarPin(){
+  const v = ($("pinIn")||{}).value;
+  if(v === pin()){ S.padres = true; cerrar(); render(); const cb = despuesPin; despuesPin = null; if(cb) cb(); }
+  else { $("pinErr").hidden = false; }
+}
+
+function hojaTema(){
+  const actual = temaDe(S.nino);
+  abrir(`<h3>Elige tu tema, ${esc(nombre(S.nino))}</h3><div class="themes">${Object.entries(TEMAS).map(([k,tt]) => `
+    <button class="th" data-a="ponTema" data-v="${k}" aria-pressed="${k===actual}"><span class="e">${tt.av}</span><b>${tt.nombre}</b>
+    <small>${tt.desc} · ganas ${tt.moneda}</small><span class="sw"><i style="background:${tt.c[0]}"></i><i style="background:${tt.c[1]}"></i></span></button>`).join("")}</div>
+    <div class="row"><button class="btn" data-a="cerrar">Cerrar</button></div>`);
+}
+
+function problema(n, it, coste){
+  if(it.grupo==="finde" && usadosSemana(n,"finde")>=2) return {tipo:"limite", txt:`${nombre(n)} ya ha elegido sus 2 premios de este fin de semana`};
+  if(it.grupo==="chuches" && usadosSemana(n,"chuches")>=1) return {tipo:"limite", txt:`${nombre(n)} ya ha canjeado esto esta semana`};
+  const s = saldo(n);
+  if(s < coste) return {tipo:"saldo", falta:coste-s};
+  return null;
+}
+function hojaCanje(id){
+  const it = tienda().find(i => i.id===id); if(!it) return;
+  const m = modoDe(it);
+  if(m==="elegir"){
+    abrir(`<h3>${esc(it.e)} ${esc(it.t)}</h3><p>¿Es solo para ti o lo compartís a medias?</p>
+      <div class="row" style="justify-content:stretch;flex-direction:column">
+        <button class="btn" data-a="modoCanje" data-v="ind|${esc(it.id)}">Solo para ${esc(nombre(S.nino))} · ${it.coste}</button>
+        <button class="btn pri" data-a="modoCanje" data-v="comp|${esc(it.id)}">👫 Compartido con ${esc(nombre(otro(S.nino)))} · ${mitad(it.coste)} cada uno</button>
+        <button class="btn" data-a="cerrar">Cancelar</button></div>`);
+    return;
+  }
+  canjeModo(it, m==="compartido" ? "comp" : "ind");
+}
+function canjeModo(it, modo){
+  const yo = S.nino, el = otro(yo);
+  if(modo==="ind"){
+    const p = problema(yo, it, it.coste);
+    if(p){ cerrar(); toast(p.tipo==="limite" ? p.txt : `Te faltan ${p.falta} ${monedaDe(yo)}. ¡Sigue así!`); return; }
+    pedirPin(`Confirma que ${nombre(yo)} canjea "${it.t}".`, () => {
+      abrir(`<h3>${esc(it.e)} ${esc(it.t)}</h3><p>${esc(nombre(yo))} gasta ${it.coste} ${monedaDe(yo)} y le quedan ${saldo(yo)-it.coste}.</p>
+        <div class="row"><button class="btn" data-a="cerrar">Cancelar</button><button class="btn pri" data-a="okCanje" data-v="ind|${esc(it.id)}">Canjear</button></div>`);
+    });
+    return;
+  }
+  const c = mitad(it.coste);
+  const p1 = problema(yo, it, c), p2 = problema(el, it, c);
+  const lim = [p1,p2].find(p => p && p.tipo==="limite");
+  if(lim){ cerrar(); toast(lim.txt); return; }
+  if(p1 || p2){
+    const pobre = p1 ? yo : el, rico = p1 ? el : yo, falta = (p1||p2).falta;
+    const puede = saldo(rico) - c >= falta;
+    abrir(`<h3>Faltan ${esc(monedaDe(pobre))}</h3>
+      <p>A ${esc(nombre(pobre))} le faltan ${falta} para pagar su mitad (${c}).${p1 && p2 ? " Y a los dos les falta." : ""}</p>
+      ${!(p1&&p2) && puede ? `<p>${esc(nombre(rico))} puede regalarle las que faltan y luego canjearlo juntos.</p>` : ""}
+      <div class="row"><button class="btn" data-a="cerrar">Cerrar</button>
+      ${!(p1&&p2) && puede ? `<button class="btn pri" data-a="regaloSug" data-v="${rico}|${pobre}|${falta}">🎁 ${esc(nombre(rico))} regala ${falta}</button>` : ""}</div>`);
+    return;
+  }
+  pedirPin(`Confirma el premio compartido "${it.t}".`, () => {
+    abrir(`<h3>👫 ${esc(it.e)} ${esc(it.t)}</h3><p>Compartido a medias: ${esc(nombre(yo))} paga ${c} y ${esc(nombre(el))} paga ${c}.</p>
+      <div class="row"><button class="btn" data-a="cerrar">Cancelar</button><button class="btn pri" data-a="okCanje" data-v="comp|${esc(it.id)}">Canjear juntos</button></div>`);
+  });
+}
+function hacerCanje(v){
+  const [modo, id] = v.split("|");
+  const it = tienda().find(i => i.id===id); if(!it) return;
+  const ts = Date.now(), base = {item:it.id, t:it.t, grupo:it.grupo||null, fecha:S.fecha, ts};
+  if(modo==="comp"){
+    const g = nid("g"), c = mitad(it.coste), yo = S.nino, el = otro(yo);
+    guardar("canjes", yo+"_"+ts.toString(36), {...base, nino:yo, coste:c, compartido:true, con:el, grupoId:g});
+    guardar("canjes", el+"_"+ts.toString(36), {...base, nino:el, coste:c, compartido:true, con:yo, grupoId:g});
+  } else {
+    guardar("canjes", S.nino+"_"+ts.toString(36), {...base, nino:S.nino, coste:it.coste});
+  }
+  cerrar(); toast(`¡Canjeado! ${it.e} ${it.t}`); fiesta(innerWidth/2, innerHeight/2);
+}
+function deshacerCanje(k){
+  const c = S.canjes[k]; if(!c) return;
+  if(c.grupoId) Object.entries(S.canjes).filter(([kk,cc]) => cc.grupoId===c.grupoId).forEach(([kk]) => borrar("canjes", kk));
+  else borrar("canjes", k);
+  toast("Canje deshecho");
+}
+function hojaRegalo(de, para, sugerido){
+  pedirPin(`Confirma que ${nombre(de)} regala ${monedaDe(de)} a ${nombre(para)}.`, () => {
+    const max = saldo(de);
+    if(max <= 0){ cerrar(); toast(`${nombre(de)} no tiene ${monedaDe(de)} para regalar`); return; }
+    abrir(`<h3>🎁 ${esc(nombre(de))} regala a ${esc(nombre(para))}</h3>
+      <p>${esc(nombre(de))} tiene ${max}. El regalo queda apuntado en los movimientos de los dos.</p>
+      <div class="ed"><label class="grpin" for="regCant">Cantidad<input id="regCant" type="number" min="1" max="${max}" step="1" value="${Math.min(sugerido||10, max)}"></label></div>
+      <span class="err" id="regErr" hidden></span>
+      <div class="row"><button class="btn" data-a="cerrar">Cancelar</button><button class="btn pri" data-a="okRegalo" data-v="${de}|${para}">Regalar</button></div>`);
+  });
+}
+function hacerRegalo(v){
+  const [de, para] = v.split("|"); const n = parseInt(($("regCant")||{}).value,10);
+  const err = $("regErr");
+  if(!(n>0)){ err.textContent = "Escribe cuántas quiere regalar"; err.hidden = false; return; }
+  if(n > saldo(de)){ err.textContent = `${nombre(de)} solo tiene ${saldo(de)}`; err.hidden = false; return; }
+  const ts = Date.now();
+  guardar("regalos", de+"_"+ts.toString(36), {de, para, cantidad:n, fecha:hoy(), ts});
+  cerrar(); toast(`🎁 ${nombre(de)} ha regalado ${n} a ${nombre(para)}`); fiesta(innerWidth/2, innerHeight/2);
+}
+
+let B = null, pestana = "ninos";
+const nid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+function hojaAjustes(){
+  B = {
+    ninos:{sara:nombre("sara"), diego:nombre("diego")},
+    bloques: JSON.parse(JSON.stringify(bloques())),
+    tienda: JSON.parse(JSON.stringify(tienda())).map(it => ({...it, modo:modoDe(it)})),
+    extras: JSON.parse(JSON.stringify(extrasCfg())),
+    pin:""
+  };
+  pestana = "ninos"; pintarAjustes();
+}
+const ICONOS = {
+  "Casa y rutina": "🪟 🛏️ 🧸 🧹 🧺 🧼 🚿 🛁 🪥 🦷 👕 👖 🧦 👟 🎒 📦 🗑️ 🧽 🧻 🚪 💡 🪴 🧴 🪮",
+  "Comida": "🥣 🥛 🍳 🥪 🍎 🍌 🥕 🥗 🍝 🍕 🍔 🌮 🥞 🧇 🍪 🍬 🍿 🍽️ 🧃 🍩 🍦 🥐",
+  "Cole y actividades": "📚 📖 ✏️ 📝 🎨 🖍️ 📐 🧮 🔬 🌍 🎹 🎸 ⚽ 🏀 🚲 🏊 🤸 🎤",
+  "Momentos del día": "⏰ 🌅 ☀️ 🍎 🌙 🌛 ⭐ 🕗 📅 🏖️",
+  "Premios y ocio": "🎬 📺 🎮 📱 🕹️ 🎳 🍿 🎟️ 🎁 🏆 🏅 🎖️ 🥇 👑 💎 🪙 🎉 ✨ 🌟 🚀 🎡 🛝",
+  "Ayudar y portarse bien": "🤝 ❤️ 😊 🙏 👏 💪 🧘 👩‍🍳 👨‍🍳 🐶 🐱 🐾 🌱 🧑‍🤝‍🧑 🫶 🌈"
+};
+let pickRuta = null, scrollAjustes = 0;
+function acts(lista, i, len, delA, delV){
+  return `<span class="acts"><button class="mv" data-a="mover" data-v="${lista}|${i}|-1" aria-label="Subir" ${i===0?"disabled":""}>▲</button>
+    <button class="mv" data-a="mover" data-v="${lista}|${i}|1" aria-label="Bajar" ${i===len-1?"disabled":""}>▼</button>
+    <button class="del" data-a="${delA}" data-v="${delV}" aria-label="Quitar">🗑️</button></span>`;
+}
+function getRuta(ruta){ let o = B; ruta.split(".").forEach(k => { o = o[k]; }); return o; }
+function setRuta(ruta, v){ const r = ruta.split("."), k = r.pop(); let o = B; r.forEach(x => { o = o[x]; }); o[k] = v; }
+function hojaIconos(ruta){
+  const sh = document.querySelector(".sheet.wide"); scrollAjustes = sh ? sh.scrollTop : 0;
+  pickRuta = ruta; const actual = getRuta(ruta);
+  abrir(`<h3>Elige un icono</h3>${Object.entries(ICONOS).map(([cat,lst]) => `<div class="sect">${cat}</div>
+    <div class="emogrid">${lst.split(" ").map(e => `<button data-a="ponIcono" data-v="${e}" aria-pressed="${e===actual}">${e}</button>`).join("")}</div>`).join("")}
+    <div class="ed"><label class="grpin" for="emoLibre">O escribe otro emoji desde el teclado
+      <input id="emoLibre" value="${esc(actual)}" style="font-size:22px;text-align:center"></label></div>
+    <div class="row"><button class="btn" data-a="volverAjustes">Cancelar</button><button class="btn pri" data-a="ponIconoLibre">Usar este</button></div>`, "wide");
+}
+function pintarAjustes(mantener){
+  const prev = document.querySelector(".sheet.wide"), st = mantener===true ? (prev ? prev.scrollTop : 0) : (typeof mantener==="number" ? mantener : 0);
+  const tab = (k,l) => `<button data-a="pest" data-v="${k}" aria-pressed="${pestana===k}">${l}</button>`;
+  let cuerpo = "";
+  if(pestana==="ninos"){
+    cuerpo = `<div class="ed">${Object.keys(NINOS).map(n => `<label class="grpin" for="nm_${n}">Nombre (ahora: ${esc(nombre(n))})
+      <input id="nm_${n}" data-b="ninos.${n}" value="${esc(B.ninos[n])}" maxlength="20"></label>`).join("")}
+      <p style="font-size:13px">Cada niño elige su tema con el botón "Cambiar tema" de su tarjeta.</p></div>`;
+  }
+  if(pestana==="tareas"){
+    cuerpo = `<p style="font-size:13px">Cambiar las tareas no afecta a las estrellas de días anteriores. El grupo es opcional (por ejemplo "Antes de cenar").</p>
+    <div class="ed">${B.bloques.map((bl,bi) => `<div class="edblk">
+      <div class="edrow hd"><button class="emo" data-a="pickIcon" data-v="bloques.${bi}.ic" aria-label="Elegir icono">${esc(bl.ic)}</button>
+        <input id="bn_${bi}" data-b="bloques.${bi}.nombre" value="${esc(bl.nombre)}" aria-label="Nombre del bloque">
+        <input id="bh_${bi}" data-b="bloques.${bi}.hora" value="${esc(bl.hora)}" aria-label="Horario del bloque"></div>
+      ${bl.tareas.map((tk,ti) => `<div class="edrow"><button class="emo" data-a="pickIcon" data-v="bloques.${bi}.tareas.${ti}.e" aria-label="Elegir icono">${esc(tk.e)}</button>
+        <input id="tt_${bi}_${ti}" data-b="bloques.${bi}.tareas.${ti}.t" value="${esc(tk.t)}" aria-label="Tarea">
+        ${acts("bloques."+bi+".tareas", ti, bl.tareas.length, "delTarea", bi+"_"+ti)}</div>
+        <div class="edsub"><input class="grpin" id="tg_${bi}_${ti}" data-b="bloques.${bi}.tareas.${ti}.g" value="${esc(tk.g||"")}" placeholder="Grupo (opcional)" aria-label="Grupo"></div>`).join("")}
+      <button class="add" data-a="addTarea" data-v="${bi}">+ Añadir tarea a ${esc(bl.nombre)}</button></div>`).join("")}</div>`;
+  }
+  if(pestana==="premios"){
+    cuerpo = `<p style="font-size:13px">"Premio de finde": se eligen 2 cada fin de semana. "1 por semana": como las chuches. "Gran tesoro": sin límite, para ahorrar. Los compartidos se pagan a medias entre los dos.</p>
+    <div class="ed">${B.tienda.map((it,i) => `<div class="edblk" style="gap:6px"><div class="edrow pr"><button class="emo" data-a="pickIcon" data-v="tienda.${i}.e" aria-label="Elegir icono">${esc(it.e)}</button>
+      <input id="pt_${i}" data-b="tienda.${i}.t" value="${esc(it.t)}" aria-label="Premio">
+      <input id="pc_${i}" type="number" min="1" step="1" data-b="tienda.${i}.coste" data-num="1" value="${it.coste}" aria-label="Coste">
+      ${acts("tienda", i, B.tienda.length, "delPremio", i)}</div>
+      <div class="edrow pr2"><select id="pg_${i}" data-b="tienda.${i}.grupo" aria-label="Tipo">
+        <option value="finde" ${it.grupo==="finde"?"selected":""}>Premio de finde</option>
+        <option value="chuches" ${it.grupo==="chuches"?"selected":""}>1 por semana</option>
+        <option value="" ${!it.grupo?"selected":""}>Gran tesoro</option></select>
+      <select id="pm_${i}" data-b="tienda.${i}.modo" aria-label="Para quién">
+        <option value="individual" ${modoDe(it)==="individual"?"selected":""}>Individual</option>
+        <option value="compartido" ${modoDe(it)==="compartido"?"selected":""}>Siempre compartido</option>
+        <option value="elegir" ${modoDe(it)==="elegir"?"selected":""}>Solo o compartido</option></select></div></div>`).join("")}
+      <button class="add" data-a="addPremio">+ Añadir premio</button></div>`;
+  }
+  if(pestana==="extras"){
+    cuerpo = `<p style="font-size:13px">Los pones tú cada día con el PIN. El texto del sello es lo que aparece estampado al conseguirlo. Cambiar los puntos no afecta a días anteriores.</p>
+    <div class="ed">${B.extras.map((x,i) => `<div class="edblk" style="gap:6px">
+      <div class="edrow pr"><button class="emo" data-a="pickIcon" data-v="extras.${i}.e" aria-label="Elegir icono">${esc(x.e)}</button>
+        <input id="xt_${i}" data-b="extras.${i}.t" value="${esc(x.t)}" aria-label="Nombre" placeholder="Nombre">
+        <input id="xp_${i}" type="number" min="0" step="1" data-b="extras.${i}.pts" data-num="1" value="${x.pts}" aria-label="Puntos entre semana" title="Puntos entre semana">
+        ${acts("extras", i, B.extras.length, "delExtra", i)}</div>
+      <input class="grpin" id="xd_${i}" data-b="extras.${i}.desc" value="${esc(x.desc||"")}" placeholder="Descripción (qué hay que hacer)" aria-label="Descripción">
+      <div class="edrow pr2"><input class="grpin" id="xs_${i}" data-b="extras.${i}.sello" value="${esc(x.sello||"")}" maxlength="24" placeholder="Texto del sello" aria-label="Texto del sello">
+        <label class="grpin" for="xf_${i}" style="display:flex;align-items:center;gap:6px">Fin de semana<input id="xf_${i}" type="number" min="0" step="1" data-b="extras.${i}.ptsFinde" data-num="1" value="${x.ptsFinde||x.pts}" style="width:80px"></label></div>
+    </div>`).join("")}
+      <button class="add" data-a="addExtra">+ Añadir sello o bonus</button></div>`;
+  }
+  if(pestana==="pin"){
+    cuerpo = `<div class="ed"><label class="grpin" for="pinNuevo">Nuevo PIN de padres (4 a 8 números)
+      <input id="pinNuevo" class="pin" type="password" inputmode="numeric" maxlength="8" data-b="pin" value="${esc(B.pin)}"></label>
+      <p style="font-size:13px">Cada bloque completo da ${PUNTOS.bloque}. Los puntos de sellos y bonus se cambian en su pestaña.</p>
+      <div class="sect">Copia de seguridad</div>
+      <p style="font-size:13px">Guarda monedas, historial y ajustes en un archivo. Si se borra la app, podrás recuperarlo todo.</p>
+      <div class="row" style="justify-content:flex-start"><button class="btn" data-a="exportar">⬇️ Descargar copia</button>
+        <label class="btn" for="fileIn" style="cursor:pointer">⬆️ Cargar copia</label>
+        <input id="fileIn" type="file" accept="application/json,.json" hidden></div></div>`;
+  }
+  abrir(`<h3>Ajustes</h3><div class="tabs">${tab("ninos","Niños")}${tab("tareas","Tareas")}${tab("premios","Premios")}${tab("extras","Sellos y bonus")}${tab("pin","PIN y copias")}</div>
+    ${cuerpo}
+    <div class="row"><button class="btn" data-a="cerrar">Cancelar</button><button class="btn pri" data-a="okAjustes">Guardar cambios</button></div>`, "wide");
+  const sh = document.querySelector(".sheet.wide"); if(sh) sh.scrollTop = st;
+}
+document.addEventListener("input", ev => {
+  const el = ev.target; if(!B || !el.dataset || !el.dataset.b) return;
+  const ruta = el.dataset.b.split("."); let o = B;
+  for(let i=0;i<ruta.length-1;i++) o = o[ruta[i]];
+  const k = ruta[ruta.length-1];
+  if(el.dataset.num){ const v = parseInt(el.value,10); o[k] = v>0 ? v : 0; }
+  else if(el.tagName==="SELECT") o[k] = el.value || null;
+  else o[k] = el.value;
+});
+document.addEventListener("change", ev => { if(ev.target && ev.target.tagName==="SELECT") ev.target.dispatchEvent(new Event("input",{bubbles:true})); });
+function exportar(){
+  const datos = JSON.stringify({app:"tablero-sara-diego", version:2, fecha:new Date().toISOString(), dias:S.dias, canjes:S.canjes, regalos:S.regalos, config:S.config});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([datos],{type:"application/json"}));
+  a.download = "tablero-copia-"+hoy()+".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast("Copia descargada en la carpeta Descargas");
+}
+let copiaPendiente = null;
+document.addEventListener("change", ev => {
+  if(!ev.target || ev.target.id !== "fileIn" || !ev.target.files[0]) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const o = JSON.parse(r.result);
+      if(o.app !== "tablero-sara-diego") throw 0;
+      copiaPendiente = o;
+      abrir(`<h3>¿Cargar esta copia?</h3><p>Es del ${new Date(o.fecha).toLocaleDateString("es-ES")}. Sustituirá todo lo que hay ahora en la tablet.</p>
+        <div class="row"><button class="btn" data-a="cerrar">Cancelar</button><button class="btn pri" data-a="okImportar">Cargar copia</button></div>`);
+    }catch(e){ toast("Ese archivo no es una copia del tablero"); }
+  };
+  r.readAsText(ev.target.files[0]);
+});
+function importar(){
+  const o = copiaPendiente; if(!o) return;
+  S.dias = o.dias||{}; S.canjes = o.canjes||{}; S.regalos = o.regalos||{}; S.config = o.config||{};
+  guardarLocal(); copiaPendiente = null; B = null; cerrar(); render(); toast("Copia cargada");
+}
+function guardarAjustes(){
+  const np = (B.pin||"").trim();
+  if(np && !/^\d{4,8}$/.test(np)){ pestana="pin"; pintarAjustes(); toast("El PIN debe tener entre 4 y 8 números"); return; }
+  const bl = B.bloques.map(b => ({...b, nombre:(b.nombre||"").trim()||"Bloque", hora:(b.hora||"").trim(), ic:(b.ic||"").trim()||"⭐",
+    tareas:b.tareas.filter(t => (t.t||"").trim()).map(t => ({id:t.id, e:(t.e||"").trim()||"✅", t:t.t.trim(), ...(t.g&&t.g.trim()?{g:t.g.trim()}:{})}))}));
+  const td = B.tienda.filter(it => (it.t||"").trim()).map(it => ({id:it.id, e:(it.e||"").trim()||"🎁", t:it.t.trim(), coste:Math.max(1, it.coste||1), grupo:it.grupo||null, modo:modoDe(it)}));
+  const xs = B.extras.filter(x => (x.t||"").trim()).map(x => ({id:x.id, e:(x.e||"").trim()||"🏅", t:x.t.trim(), desc:(x.desc||"").trim(), sello:(x.sello||"").trim()||x.t.trim(), pts:Math.max(0,x.pts||0), ptsFinde:Math.max(0,x.ptsFinde||0)}));
+  const cfg = {...S.config, extras:xs, ninos:{sara:(B.ninos.sara||"").trim(), diego:(B.ninos.diego||"").trim()}, bloques:bl, tienda:td};
+  delete cfg.precios;
+  if(np) cfg.pin = np;
+  guardar("config","general",cfg); B = null; cerrar(); toast("Cambios guardados");
+}
+
+
+/* ---------- Resúmenes y estadísticas ---------- */
+function primerDia(){
+  let m = hoy();
+  for(const k in S.dias){ if(S.dias[k].fecha < m) m = S.dias[k].fecha; }
+  for(const k in S.canjes){ if(S.canjes[k].fecha < m) m = S.canjes[k].fecha; }
+  return m;
+}
+function rangoDias(desde, hasta){ const l = []; for(let f = desde; f <= hasta; f = addDays(f,1)) l.push(f); return l; }
+function racha(n){
+  const dias = rangoDias(primerDia(), hoy()).filter(f => !esFinde(f));
+  let mejor = 0, actual = 0;
+  dias.forEach(f => {
+    const e = estrellas(dia(n,f));
+    if(e===3){ actual++; mejor = Math.max(mejor, actual); }
+    else if(f !== hoy()) actual = 0;
+  });
+  return {mejor, actual};
+}
+const colorPct = p => p>=80 ? "var(--ok)" : p>=50 ? "var(--gold)" : "var(--bad)";
+const barra = (txt, p, hi) => `<div class="br ${hi?"hi":""}"><span>${txt}</span><span class="tr"><i style="width:${p}%;background:${colorPct(p)}"></i></span><span class="pc">${p}%</span></div>`;
+const fechaCorta = f => parse(f).toLocaleDateString("es-ES",{day:"numeric",month:"short"});
+
+function hojaResumen(){
+  const n = S.nino, t = TEMAS[temaDe(n)];
+  const dias = Object.values(S.dias).filter(d => d.nino===n);
+  const est = dias.filter(d => !esFinde(d.fecha)).reduce((a,d) => a+estrellas(d), 0);
+  const perfectos = dias.filter(d => !esFinde(d.fecha) && estrellas(d)===3).length;
+  const ganado = dias.reduce((a,d) => a+monedasDia(d), 0);
+  const cj = canjesDe(n).map(([k,c]) => c);
+  const gastado = cj.reduce((a,c) => a+(c.coste||0), 0);
+  const regs = Object.values(S.regalos);
+  const dado = regs.filter(r => r.de===n).reduce((a,r) => a+r.cantidad, 0);
+  const recibido = regs.filter(r => r.para===n).reduce((a,r) => a+r.cantidad, 0);
+  const r = racha(n);
+  /* sellos y bonus */
+  const cuenta = {};
+  dias.forEach(d => Object.keys(extrasDia(d)).forEach(id => { cuenta[id] = (cuenta[id]||0)+1; }));
+  const xs = extrasCfg();
+  const sellos = xs.map(x => `<div class="stampbox"><span class="stamp ${cuenta[x.id]?"":"off"}"><span class="ck">${cuenta[x.id]?"✓":"?"}</span>${esc(x.sello||x.t)}</span>
+    <b>× ${cuenta[x.id]||0}</b></div>`).join("");
+  /* en qué se ha gastado */
+  const porPremio = {};
+  cj.forEach(c => { const k = c.t + (c.compartido?" (a medias)":""); porPremio[k] = porPremio[k] || {n:0, total:0, item:c.item}; porPremio[k].n++; porPremio[k].total += c.coste||0; });
+  const iconoDe = id => (tienda().find(i => i.id===id) || TIENDA_DEF.find(i => i.id===id) || {e:"🎁"}).e;
+  const gastos = Object.entries(porPremio).sort((a,b) => b[1].total-a[1].total)
+    .map(([k,v]) => `<div class="li"><span>${esc(iconoDe(v.item))} ${esc(k)} ${v.n>1?`<small style="color:var(--muted)">× ${v.n}</small>`:""}</span><span>−${v.total}</span></div>`).join("");
+  abrir(`<h3>${t.av} El resumen de ${esc(nombre(n))}</h3>
+    <div class="tiles">
+      <div class="tile"><span class="v">⭐ ${est}</span><span class="l">estrellas conseguidas</span></div>
+      <div class="tile o"><span class="v">+${ganado}</span><span class="l">${t.moneda} ganados</span></div>
+      <div class="tile b"><span class="v">−${gastado}</span><span class="l">${t.moneda} gastados</span></div>
+      <div class="tile g"><span class="v">${saldo(n)}</span><span class="l">${t.moneda} en tu ${t.cofre.toLowerCase()}</span></div>
+    </div>
+    <div class="tiles">
+      <div class="tile"><span class="v">${perfectos}</span><span class="l">días perfectos (3 ⭐)</span></div>
+      <div class="tile"><span class="v">${r.actual}</span><span class="l">racha actual de días perfectos</span></div>
+      <div class="tile"><span class="v">${r.mejor}</span><span class="l">tu mejor racha</span></div>
+      <div class="tile"><span class="v">${recibido-dado>=0?"+":""}${recibido-dado}</span><span class="l">regalos (${recibido} recibidos, ${dado} dados)</span></div>
+    </div>
+    <div class="sect">Mis sellos y bonus</div><div class="stamps">${sellos}</div>
+    <div class="sect">En qué me lo he gastado</div>
+    ${gastos ? `<div class="list">${gastos}</div>` : `<p>Todavía no has canjeado nada. ¡Lo que ahorres sirve para premios grandes!</p>`}
+    <div class="row"><button class="btn pri" data-a="cerrar">Cerrar</button></div>`, "wide");
+}
+
+let statsNino = "sara", statsPer = "4sem";
+function hojaStats(){
+  const n = statsNino, t = TEMAS[temaDe(n)];
+  const ini = primerDia();
+  let desde = statsPer==="semana" ? lunes(hoy()) : statsPer==="4sem" ? addDays(lunes(hoy()), -21) : ini;
+  if(desde < ini) desde = ini;
+  let hasta = addDays(hoy(), -1);
+  if(hasta < desde) hasta = hoy();
+  const todos = rangoDias(desde, hasta), cole = todos.filter(f => !esFinde(f));
+  const chip = (k,l,a) => `<button data-a="${a}" data-v="${k}" aria-pressed="${(a==="statsPer"?statsPer:statsNino)===k}">${l}</button>`;
+  const cab = `<h3>📈 Estadísticas</h3>
+    <div class="tabs">${Object.keys(NINOS).map(k => chip(k, esc(nombre(k)), "statsNino")).join("")}</div>
+    <div class="tabs">${chip("semana","Esta semana","statsPer")}${chip("4sem","Últimas 4 semanas","statsPer")}${chip("todo","Desde el principio","statsPer")}</div>
+    <p style="font-size:13px">Del ${fechaCorta(desde)} al ${fechaCorta(hasta)}${hasta===hoy()?" (incluye hoy, que aún está en curso)":""}: ${cole.length} días de cole y ${todos.length-cole.length} de fin de semana.</p>`;
+  if(!cole.length && !todos.length){ abrir(cab + `<p>Aún no hay días para analizar.</p><div class="row"><button class="btn pri" data-a="cerrar">Cerrar</button></div>`, "wide"); return; }
+  const bls = bloques();
+  const ds = cole.map(f => dia(n,f));
+  const totT = bls.reduce((a,b) => a+b.tareas.length, 0) * cole.length;
+  const hechasT = ds.reduce((a,d) => a + bls.reduce((x,b) => x + b.tareas.filter(tk => d.tareas && d.tareas[tk.id]).length, 0), 0);
+  const pctT = totT ? Math.round(hechasT/totT*100) : 0;
+  const estT = ds.reduce((a,d) => a+estrellas(d), 0);
+  const perf = ds.filter(d => estrellas(d)===3).length;
+  /* por bloque */
+  const porBloque = bls.map(b => { const ok = ds.filter(d => b.tareas.length && b.tareas.every(tk => d.tareas && d.tareas[tk.id])).length;
+    return {b, p: cole.length ? Math.round(ok/cole.length*100) : 0}; });
+  /* por tarea */
+  const porTarea = [];
+  bls.forEach(b => b.tareas.forEach(tk => { const ok = ds.filter(d => d.tareas && d.tareas[tk.id]).length;
+    porTarea.push({txt:`${esc(tk.e)} ${esc(tk.t)} <small style="color:var(--muted)">· ${esc(b.nombre)}</small>`, nombre:tk.t, p: cole.length ? Math.round(ok/cole.length*100) : 0}); }));
+  porTarea.sort((a,b) => a.p-b.p);
+  const cuestan = porTarea.filter(x => x.p < 70).slice(0,3);
+  /* por día de la semana */
+  const porDia = [1,2,3,4,5].map(w => { const fs = cole.filter(f => parse(f).getDay()===w); const e = fs.reduce((a,f) => a+estrellas(dia(n,f)), 0);
+    return {w, p: fs.length ? Math.round(e/(fs.length*3)*100) : null}; }).filter(x => x.p!==null);
+  const peorDia = porDia.length > 1 ? porDia.reduce((a,b) => b.p < a.p ? b : a) : null;
+  const nombresDia = ["","Lunes","Martes","Miércoles","Jueves","Viernes"];
+  /* sellos y bonus */
+  const xs = extrasCfg().map(x => { const c = todos.filter(f => extrasDia(dia(n,f))[x.id] != null).length; return {x, c, p: todos.length ? Math.round(c/todos.length*100) : 0}; });
+  /* monedas del periodo */
+  const ganado = todos.reduce((a,f) => a+monedasDia(dia(n,f)), 0);
+  const gastado = canjesDe(n).map(([k,c]) => c).filter(c => c.fecha>=desde && c.fecha<=hasta).reduce((a,c) => a+(c.coste||0), 0);
+  const regs = Object.values(S.regalos).filter(r => r.fecha>=desde && r.fecha<=hasta);
+  const dado = regs.filter(r => r.de===n).reduce((a,r) => a+r.cantidad, 0), rec = regs.filter(r => r.para===n).reduce((a,r) => a+r.cantidad, 0);
+
+  const aviso = cuestan.length
+    ? `<div class="callout"><b>Lo que más le cuesta a ${esc(nombre(n))}:</b> ${cuestan.map(x => `${esc(x.nombre)} (${x.p}%)`).join(", ")}.${peorDia && peorDia.p < 70 ? ` El día más flojo suele ser el ${nombresDia[peorDia.w].toLowerCase()}.` : ""}</div>`
+    : (cole.length ? `<div class="callout okc"><b>¡Muy bien!</b> Todas las tareas se cumplen al menos el 70% de los días.</div>` : "");
+  abrir(cab + `
+    <div class="tiles">
+      <div class="tile ${pctT>=80?"o":pctT>=50?"g":"b"}"><span class="v">${pctT}%</span><span class="l">tareas cumplidas</span></div>
+      <div class="tile"><span class="v">${cole.length?(estT/cole.length).toFixed(1):"–"}</span><span class="l">estrellas de media al día (de 3)</span></div>
+      <div class="tile"><span class="v">${perf}<small style="font-size:16px">/${cole.length}</small></span><span class="l">días perfectos</span></div>
+      <div class="tile g"><span class="v">${saldo(n)}</span><span class="l">${t.moneda} ahora</span></div>
+    </div>
+    ${aviso}
+    ${cole.length ? `<div class="sect">Bloques completos</div><div class="bars">${porBloque.map(x => barra(`${esc(x.b.ic)} ${esc(x.b.nombre)}`, x.p)).join("")}</div>
+    <div class="sect">Cada tarea, de la que menos a la que más se cumple</div><div class="bars">${porTarea.map(x => barra(x.txt, x.p, x.p<70)).join("")}</div>
+    ${porDia.length>1 ? `<div class="sect">Por día de la semana (estrellas conseguidas)</div><div class="bars">${porDia.map(x => barra(nombresDia[x.w], x.p, peorDia && x.w===peorDia.w && x.p<70)).join("")}</div>` : ""}` : ""}
+    <div class="sect">Sellos y bonus (días conseguidos de ${todos.length})</div>
+    <div class="bars">${xs.map(o => barra(`${esc(o.x.e)} ${esc(o.x.t)} <small style="color:var(--muted)">· ${o.c} días</small>`, o.p)).join("")}</div>
+    <div class="sect">Monedas en este periodo</div>
+    <div class="list">
+      <div class="li"><span>Ganadas</span><span style="color:var(--ok)">+${ganado}</span></div>
+      <div class="li"><span>Gastadas en premios</span><span style="color:var(--bad)">−${gastado}</span></div>
+      <div class="li"><span>Regalos recibidos / dados</span><span>+${rec} / −${dado}</span></div>
+    </div>
+    <div class="row"><button class="btn pri" data-a="cerrar">Cerrar</button></div>`, "wide");
+}
+
+/* ---------- Eventos ---------- */
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-a]"); if(!b) return;
+  const a = b.dataset.a, v = b.dataset.v;
+  if(a==="cerrarFondo"){ if(ev.target===b) cerrar(); return; }
+  if(a==="cerrar"){ cerrar(); return; }
+  if(a==="nino"){ S.nino = v; lsSet("nino",v); render(); return; }
+  if(a==="dia"){ S.fecha = addDays(S.fecha, +v); render(); return; }
+  if(a==="hoy"){ S.fecha = hoy(); render(); return; }
+  if(a==="ir"){ S.fecha = v; render(); return; }
+  if(a==="tema"){ hojaTema(); return; }
+  if(a==="resumen"){ hojaResumen(); return; }
+  if(a==="statsNino"){ statsNino = v; hojaStats(); return; }
+  if(a==="statsPer"){ statsPer = v; hojaStats(); return; }
+  if(a==="ponTema"){ guardar("config","general",{...S.config, temas:{...(S.config.temas||{}), [S.nino]:v}}); cerrar(); return; }
+  if(a==="tarea"){
+    if(bloqueado()){
+      pedirPin(S.fecha > hoy() ? "Este día aún no ha llegado. Solo papá o mamá pueden marcarlo." : "Este día ya pasó. Para cambiarlo hace falta el PIN de papá o mamá.", () => toast("Modo padres activado: ya puedes cambiar este día"));
+      return;
+    }
+    const d = dia(S.nino,S.fecha), tareas = {...(d.tareas||{})};
+    const antes = estrellas(d);
+    if(tareas[v]) delete tareas[v]; else tareas[v] = true;
+    setDia({tareas});
+    const desp = estrellas(dia(S.nino,S.fecha));
+    if(desp > antes){
+      const r = b.getBoundingClientRect(); fiesta(r.left+r.width/2, r.top);
+      toast(desp===3 ? `¡3 de 3 ⭐! Mañana tienes premio` : `¡Bloque completo! +${PUNTOS.bloque} ${T().moneda}`);
+    }
+    return;
+  }
+  if(a==="extra"){
+    const x = extrasCfg().find(e => e.id===v); if(!x) return;
+    pedirPin(`"${x.t}" lo confirma papá o mamá.`, () => {
+      const d = dia(S.nino,S.fecha), ex = {...extrasDia(d)}, tenia = ex[v] != null;
+      if(tenia) delete ex[v]; else ex[v] = ptsExtra(x, S.fecha);
+      setDia({extras:ex});
+      if(!tenia){ const el = document.querySelector(`[data-a="extra"][data-v="${CSS.escape(v)}"]`); const r = (el||b).getBoundingClientRect(); fiesta(r.left+r.width/2, r.top); }
+    });
+    return;
+  }
+  if(a==="canjear"){ hojaCanje(v); return; }
+  if(a==="modoCanje"){ const [m,id] = v.split("|"); const it = tienda().find(i => i.id===id); if(it) canjeModo(it, m); return; }
+  if(a==="okCanje"){ hacerCanje(v); return; }
+  if(a==="deshacer"){ deshacerCanje(v); return; }
+  if(a==="regalar"){ hojaRegalo(S.nino, otro(S.nino), 10); return; }
+  if(a==="regaloSug"){ const [de,para,f] = v.split("|"); hojaRegalo(de, para, +f); return; }
+  if(a==="okRegalo"){ hacerRegalo(v); return; }
+  if(a==="deshacerRegalo"){ borrar("regalos", v); toast("Regalo deshecho"); return; }
+  if(a==="okPin"){ comprobarPin(); return; }
+  if(a==="okAjustes"){ guardarAjustes(); return; }
+  if(a==="exportar"){ exportar(); return; }
+  if(a==="okImportar"){ importar(); return; }
+  if(a==="pest"){ pestana = v; pintarAjustes(); return; }
+  if(a==="pickIcon"){ hojaIconos(v); return; }
+  if(a==="ponIcono"){ setRuta(pickRuta, v); pintarAjustes(scrollAjustes); return; }
+  if(a==="ponIconoLibre"){ const e = (($("emoLibre")||{}).value||"").trim(); if(e) setRuta(pickRuta, e); pintarAjustes(scrollAjustes); return; }
+  if(a==="volverAjustes"){ pintarAjustes(scrollAjustes); return; }
+  if(a==="mover"){ const [lista,i,d] = v.split("|"); const arr = getRuta(lista), a1 = +i, a2 = a1 + (+d);
+    if(a2>=0 && a2<arr.length){ [arr[a1],arr[a2]] = [arr[a2],arr[a1]]; } pintarAjustes(true); return; }
+  if(a==="addTarea"){ B.bloques[+v].tareas.push({id:nid("t"), e:"✅", t:""}); pintarAjustes(true); const n = B.bloques[+v].tareas.length-1; const i = $("tt_"+v+"_"+n); if(i) i.focus(); return; }
+  if(a==="delTarea"){ const [bi,ti] = v.split("_").map(Number); B.bloques[bi].tareas.splice(ti,1); pintarAjustes(true); return; }
+  if(a==="addPremio"){ B.tienda.push({id:nid("p"), e:"🎁", t:"", coste:50, grupo:null, modo:"individual"}); pintarAjustes(); const i = $("pt_"+(B.tienda.length-1)); if(i) i.focus(); return; }
+  if(a==="addExtra"){ B.extras.push({id:nid("x"), e:"🌟", t:"", desc:"", sello:"", pts:5, ptsFinde:5}); pintarAjustes(); const i = $("xt_"+(B.extras.length-1)); if(i) i.focus(); return; }
+  if(a==="delExtra"){ B.extras.splice(+v,1); pintarAjustes(true); return; }
+  if(a==="delPremio"){ B.tienda.splice(+v,1); pintarAjustes(true); return; }
+});
+document.addEventListener("keydown", ev => {
+  if(ev.key==="Enter" && ev.target && ev.target.id==="pinIn") comprobarPin();
+  if(ev.key==="Escape") cerrar();
+});
+$("btnPadres").addEventListener("click", () => {
+  if(S.padres){ S.padres = false; render(); toast("Modo padres cerrado"); }
+  else pedirPin("Introduce el PIN para dar sellos, editar días pasados y canjear premios.", () => toast("Modo padres activado"));
+});
+$("btnAjustes").addEventListener("click", hojaAjustes);
+$("btnStats").addEventListener("click", () => { statsNino = S.nino; statsPer = "4sem"; hojaStats(); });
+
+/* Cambio de día si la tablet se queda abierta */
+let ultimoHoy = hoy();
+setInterval(() => { const h = hoy(); if(h !== ultimoHoy){ if(S.fecha===ultimoHoy) S.fecha = h; ultimoHoy = h; render(); } }, 60000);
+
+/* ---------- Arranque ---------- */
+try{ const raw = lsGet("local"); if(raw){ const o = JSON.parse(raw); S.dias = o.dias||{}; S.canjes = o.canjes||{}; S.regalos = o.regalos||{}; S.config = o.config||{}; } }catch(e){}
+$("status").textContent = "Guardado en esta tablet. Haz una copia de seguridad de vez en cuando (Modo padres › Ajustes › PIN y copias).";
+render();
+try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+if("serviceWorker" in navigator){ window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(()=>{}); }); }
+})();
+</script>
+
+</body>
+</html>
